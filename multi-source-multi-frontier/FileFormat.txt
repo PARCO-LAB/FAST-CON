@@ -1,0 +1,73 @@
+---------------------------------
+Matrix Market:
+http://www.cise.ufl.edu/research/sparse/matrices/
+---------------------------------
+
+%%MatrixMarket <text>
+% [<text>]
+% [<text>]
+...
+% [<text>]
+<#Nodes> <#Nodes> <#Edges>
+<NodeId> <NodeId> [<text>]
+<NodeId> <NodeId> [<text>]
+..
+<NodeId> <NodeId> [<text>]
+<line end>
+
+---------------------------------
+Dimacs10th:
+http://www.cc.gatech.edu/dimacs10/downloads.shtml
+---------------------------------
+
+[% <text>]
+<#Nodes> <#Edges> [<Special>]
+<Edges1 (Node1)> <Edges2 (Node1)> ... <EdgesR (Node1)>
+<Edges1 (Node2)> <Edges2 (Node2)> ... <EdgesR (Node2)>
+...
+<Edges1 (NodeS)> <Edges2 (NodeS)> ... <EdgesR (NodeS)>
+
+Note: blank lines are admissible
+
+---------------------------------
+SNAP:
+http://snap.stanford.edu/data/index.html
+---------------------------------
+
+# <"Directed" or "Undirected" or "Directed*"> [<text>]
+[# <text>]
+...
+[# <text>]
+# Nodes: <#Nodes> Edges: <#Edges>
+[# <text>]
+<NodeId> <NodeId> [<text>]
+<NodeId> <NodeId> [<text>]
+..
+<NodeId> <NodeId> [<text>]
+<line end>
+
+Note: In the header some graphs are declared Directed but for all edges there is the opposite.
+Check this with:
+sequential.out <graph> -checkDirected
+Then change the header from "Directed" to "Directed*" if you want to enable the low degree optimization.
+
+---------------------------------
+Dimacs9th / GtGraph:
+http://www.dis.uniroma1.it/challenge9/download.shtml
+---------------------------------
+
+[c <text>]
+...
+[c <text>]
+p sp <#Nodes> <#Edges>
+a <NodeId> <NodeId> [<text>]
+a <NodeId> <NodeId> [<text>]
+...
+[c <text>]
+...
+a <NodeId> <NodeId> [<text>]
+<line end>
+
+
+Note: all graph have NodeId 0
+For Dimacs9th / GtGraph, Dimacs10th, Matrix Market is added a vertex with NodeId 0 and a edge (directed/undirected) to NodeId 1
