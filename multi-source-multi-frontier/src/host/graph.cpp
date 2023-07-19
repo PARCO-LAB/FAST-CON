@@ -98,11 +98,18 @@ void Graph::BfsInit(int source, int *_Distance)
 }
 
 //esecuzione bfs nel grafo
-void Graph::bfs()
+void Graph::bfs(int target)
 {
 	while (left < right) //finchè ci sono nodi a sinistra continua a prendere indici dalla queue
 	{
 		int qNode = Queue[left++];
+
+		if (qNode == target)
+		{
+			std::cout << qNode << "\n";
+			std::cout << "sequential connection found\n";
+			return;
+		}
 
 		for (int i = OutNodes[qNode]; i < OutNodes[qNode + 1]; ++i) //prendo nodi dal vettore degli outnodi
 		{

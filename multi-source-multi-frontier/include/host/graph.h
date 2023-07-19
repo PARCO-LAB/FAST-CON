@@ -32,7 +32,7 @@ class Graph {
 		void Dimacs10ToCOO();
 
 		void BfsInit(int source, int* _Distance);
-		void bfs();
+		void bfs(int target);
 		void bfsFrontier(std::vector<int>& Frontiers);
 		int visitedNodes();
 		int visitedEdges();

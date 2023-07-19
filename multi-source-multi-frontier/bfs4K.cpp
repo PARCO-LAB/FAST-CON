@@ -42,15 +42,16 @@ int main(int argc, char *argv[])
 	// 	std::cout << std::setw(3) << i << ":\t" << Frontiers[i] << std::endl;
 	// }
 
-	graph.BfsInit(0, hostDistance);
+	srand(time(NULL));
+	graph.BfsInit(mt::randf_co() * graph.V, hostDistance);
 	
-	// std::cout << "Computing Seq. BFS...\n" << std::flush;
-	Timer<HOST> TM(1, 23);
+	std::cout << "Computing Seq. BFS...\n" << std::flush;
+	Timer<HOST> TM;
 	TM.start();
 
-	// graph.bfs();
+	graph.bfs(mt::randf_co() * graph.V);
 
-	// TM.getTime("Host BFS");
+	TM.getTime("Host BFS");
 
 	cudaGraph devGraph(graph);
 
