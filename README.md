@@ -18,3 +18,6 @@ The following features are implemented to obtain better performance:
 
 ## How to run
 Inside every folder there is a README.txt that explains the commands to compile and run.
+
+## Comparison
+The [multi-source-multi-frontier](https://github.com/PARCO-LAB/FAST-CON/tree/main/multi-source-multi-frontier) code also does a comparison with a sequential implementation and shows the results: the sequential implementation ranges approximately from ~3.0ms to ~14.0ms, while FAST-CON takes around 0.70ms (time varies based on the selected source and target) on the [road-luxembourg-osm](https://github.com/PARCO-LAB/FAST-CON/blob/main/example_graphs/road-luxembourg-osm.mtx).
