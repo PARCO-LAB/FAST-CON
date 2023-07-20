@@ -12,7 +12,7 @@ void readGraphSnap(	std::ifstream& fin, Graph& graph, const int nof_lines );
 namespace readGraph {
 
 void readSTD( const char* File, Graph& graph, const int nof_lines) {
-	// std::cout << "Reading Graph File..." << std::flush;
+	std::cout << "Reading Graph File..." << std::flush;
 
 	std::ifstream fin(File);
 	std::string s;
@@ -36,7 +36,7 @@ void readSTD( const char* File, Graph& graph, const int nof_lines) {
 		readGraphSnap(fin, graph, nof_lines);
 
 	fin.close();
-	// std::cout << "\tComplete!\n" << std::flush;
+	std::cout << "\tComplete!\n" << std::flush;
 
 	if (dimacs10 && graph.Direction == UNDIRECTED )
 		graph.Direction = UNDEFINED;

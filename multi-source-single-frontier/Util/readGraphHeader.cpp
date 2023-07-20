@@ -17,7 +17,7 @@ void readGraphHeader(const char* File, int &V, int &E, int &nof_lines, GDirectio
 	std::cout.imbue(std::locale(std::locale(), new fUtil::myseps));
 
 	std::string name(File);
-	// std::cout << "\nRead Header:\t" << name.substr(name.find_last_of("/") + 1) << "\tSize: " << size / (1024 * 1024) << " MB\n";
+	std::cout << "\nRead Header:\t" << name.substr(name.find_last_of("/") + 1) << "\tSize: " << size / (1024 * 1024) << " MB\n";
 	std::ifstream fin(File);
 	std::string s;
 	fin >> s;

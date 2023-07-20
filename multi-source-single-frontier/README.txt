@@ -21,13 +21,13 @@ $ cmake -DARCH=35 ..
 USAGE
 --------------------------------------------
 
-$ bfs4K <graph_path> [ -D | -U ]
+$ fast-con-double-source <graph_path> [ -D | -U ]
 
 -D		Force Directed Graph
 -U		Force Undirected Graph
 without the optional parameter is used the property Directed/Undirected specified in the input file (suggested)
 
-config.h	-> configure BFS-4K
+config.h	-> configure FAST-CON
 
 --------------------------------------------
 SUPPORTED INPUT FORMAT

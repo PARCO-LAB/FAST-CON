@@ -1,4 +1,4 @@
-set(PROJECT "BFS4K")
+set(PROJECT "FAST-CON_MSSF")
 project(${PROJECT} CXX)
 
 cmake_minimum_required(VERSION 3.5)
@@ -101,8 +101,8 @@ set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "--use_fast_math" "-Xcompiler=-O3,-march=
 #release options
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -funroll-loops -DNDEBUG")
 
-cuda_add_executable(bfs4K ${PROJECT_SOURCE_DIR}/bfs4K.cpp ${HOST_SRC} ${DEVICE_SRC} ${UTIL_SRC})
-target_link_libraries(bfs4K ${DEVRT_LIBRARY})
+cuda_add_executable(fast-con-mssf ${PROJECT_SOURCE_DIR}/main.cpp ${HOST_SRC} ${DEVICE_SRC} ${UTIL_SRC})
+target_link_libraries(fast-con-mssf ${DEVRT_LIBRARY})
 
 set(EXECUTABLE_OUTPUT_PATH .)
 add_custom_target(rm rm -rf *)
