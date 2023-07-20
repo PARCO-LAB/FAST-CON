@@ -1,4 +1,4 @@
-set(PROJECT "BFS4K")
+set(PROJECT "FAST-CON_MSMF")
 project(${PROJECT} CXX)
 
 cmake_minimum_required(VERSION 3.5)
@@ -86,11 +86,9 @@ elseif (ARCH STREQUAL "52")
 	list(APPEND CUDA_NVCC_FLAGS "-arch=sm_52" "-DARCH=520")
 elseif (ARCH STREQUAL "53")
 	list(APPEND CUDA_NVCC_FLAGS "-arch=sm_53" "-DARCH=530")
-elseif (ARCH STREQUAL "75")
-	list(APPEND CUDA_NVCC_FLAGS "-arch=sm_75" "-DARCH=750")
 else()
 	message(FATAL_ERROR "\nplease select GPU architecture:
-                        \"cmake -DARCH=[ 30 | 32 | 35 | 37 | 50 | 52 | 53 | 75 ]\"")
+                        \"cmake -DARCH=[ 30 | 32 | 35 | 37 | 50 | 52 | 53 ]\"")
 endif()
 
 # ------------------------------------------------------------------------------
@@ -103,8 +101,8 @@ set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "--use_fast_math" "-Xcompiler=-O3,-march=
 #release options
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -funroll-loops -DNDEBUG")
 
-cuda_add_executable(bfs4K ${PROJECT_SOURCE_DIR}/bfs4K.cpp ${HOST_SRC} ${DEVICE_SRC} ${UTIL_SRC})
-target_link_libraries(bfs4K ${DEVRT_LIBRARY})
+cuda_add_executable(fast-con-msmf ${PROJECT_SOURCE_DIR}/main.cpp ${HOST_SRC} ${DEVICE_SRC} ${UTIL_SRC})
+target_link_libraries(fast-con-msmf ${DEVRT_LIBRARY})
 
 set(EXECUTABLE_OUTPUT_PATH .)
 add_custom_target(rm rm -rf *)

@@ -70,15 +70,15 @@ void initProgress(int lines) {
 	progress = 1;
 	fchunk = (double) lines / 100;
 	nextChunk = fchunk;
-	// if (nextChunk < 1)
-	// 	std::cout << "100%"  << std::flush;
-	// else
-	// 	std::cout << " 0%"  << std::flush;
+	if (nextChunk < 1)
+		std::cout << "100%"  << std::flush;
+	else
+		std::cout << " 0%"  << std::flush;
 }
 
 void readProgress(int lineProgress) {
 	if (lineProgress == nextChunk) {
-		// std::cout << "\b\b\b" << std::setw(2) << progress++ << '%' << std::flush;
+		std::cout << "\b\b\b" << std::setw(2) << progress++ << '%' << std::flush;
 		nextChunk = progress * fchunk;
 	}
 }

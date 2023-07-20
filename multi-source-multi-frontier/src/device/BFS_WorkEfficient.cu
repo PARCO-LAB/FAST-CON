@@ -1,264 +1,181 @@
 #pragma once
 
-long long int totalFrontierNodes;
-long long int totalFrontierEdges;
-int visitedNodes, FrontierSize, level, run;
-bool phase;
-int SizeArray[4];
+long long int totalFrontierNodes = 0;
+int level = 1, FrontierSize = NUM_SOURCES;
+int steps = 0; // Number of steps executed
 
-void cudaGraph::cudaBFS4K_N(int N_OF_TESTS)
-{
-	srand(time(NULL));	//random
-	if (DUPLICATE_REMOVE) //configuro sharedmemory per duplicate removal
+void cudaGraph::cudaFASTCON_N(int nof_tests) {
+	srand(time(NULL));
+	if (DUPLICATE_REMOVE)
 		cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
 
-	long long int totalVisitedEdges = 0, totalVisitedNodes = 0, diameter = 0;
-	totalFrontierNodes = 0, totalFrontierEdges = 0; //inizializzazione variabili per statistiche BFS
+	int* hostDistance = new int[V];
+	Timer<DEVICE> TM;
 
-	int *hostDistance = new int[V]; //distanza percorsa sui nodi
-	Timer<DEVICE> TM;				//timer
+	double totalTime = 0, totalBFSTime = 0, totalAdjMatrixTime = 0;
+	double singleTestTime = 0;
+	int totalSteps = 0;
 
-	double totalTime = 0;
-	double totalTopDown = 0;
-	double totalBottomUp = 0;
-	double totalBfs = 0;
-	double totalSingleTestTime = 0;
-	float timeMin = 1000;
-	float timeMax = 0;
+	int stConnectionsFound = 0;
+	for (int i = 0; i < N_OF_TESTS; i++) {
 
-	int topdown = 0;
-	int bottomup = 0;
-	double avgRun = 0;
-	float doublePartialTime = 0;
-	float adjcheckTime = 0;
-	int found = 0;
-	bool hostFoundCommon = 0;
+		// Select random sources (the first is s, the last is t)
+		int *sources = new int[NUM_SOURCES];
+		for (int j = 0; j < NUM_SOURCES; j++)
+			sources[j] = N_OF_TESTS == 1 ? 0 : mt::randf_co() * V;
 
-	// cudaDeviceSetLimit(cudaLimitPrintfFifoSize, 5000000);
+		bool foundCommon = false;
+		steps = 0;
+		int visited = 1;
+		
+		this->Reset(sources, NUM_SOURCES);
 
-	for (int i = 0; i < N_OF_TESTS; i++)
-	{
-		int *source = new int[NUM_SOURCES]();
-
-		for (int ff = 0; ff < NUM_SOURCES; ++ff)
+		// Loop if the connection has not yet been found and
+		// in the previous step some nodes have been visited (i.e. there is at least a non-empty frontier)
+		while (!foundCommon && visited)
 		{
-			source[ff] = mt::randf_co() * V;
-		}
-
-		totalVisitedNodes += graph.visitedNodes(); //variabili aggiornate per statistiche
-		totalVisitedEdges += graph.visitedEdges();
-		diameter += graph.getMaxDistance();
-
-		// printf("TOP-DOWN PHASE\n");
-		phase = 0;
-		hostFoundCommon = 0;
-		totalSingleTestTime = 0;
-		visitedNodes = 0;
-		run = 0;
-		int hostGlobalVisited = 1;
-		topdown++;
-
-		this->Reset(source, NUM_SOURCES); //reset cuda graph con inserimento del source nel frontier
-
-		// while (!hostFoundCommon && visitedNodes < E && hostGlobalVisited)
-		while (!hostFoundCommon && hostGlobalVisited)
-		{
-			// printf("RUN %d\n", run);
+			std::cout << "Step " << steps << std::endl;
 
 			const int ZERO = 0;
 			cudaMemcpyToSymbolAsync(devGlobalVisited, &ZERO, sizeof(int));
-			cudaMemcpyToSymbolAsync(devGlobalLevel, &ZERO, sizeof(int));
-			cudaMemcpyToSymbolAsync(devActiveBlocks, &ZERO, sizeof(int));
-			cudaMemcpyToSymbolAsync(countFail, &ZERO, sizeof(int));
 
-			TM.start();		  //start time
-			this->BFSBlock(); //start BFS4K
-			TM.stop();		  //stop timer
+			// BFS
+			TM.start();
+			this->cudaFASTCON();
+			TM.stop();
+			steps++;
 
-			//sync device
-			cudaDeviceSynchronize();
+			cudaError("BFS Kernel N");
 
-			// cudaError("BFS Kernel N");
-			float bfsTime = TM.duration();
-			// printf("time of top-down bfs %f\n", bfsTime);
+			double BFSTime = TM.duration();
+			std::cout << "Time of BFS visit: " << std::fixed << std::setprecision(2) << BFSTime << " ms\n";
 
 			int hostGlobalLevel = 0;
 			int hostActiveBlocks = 0;
-			cudaMemcpyFromSymbolAsync(&hostGlobalVisited, devGlobalVisited, sizeof(int));
-			cudaMemcpyFromSymbolAsync(&hostGlobalLevel, devGlobalLevel, sizeof(int));
-			cudaMemcpyFromSymbolAsync(&hostActiveBlocks, devActiveBlocks, sizeof(int));
-			visitedNodes += hostGlobalVisited;
-			// printf("count global %d\n", hostGlobalVisited);
-			// printf("level global %d\n", hostGlobalLevel);
-			// printf("average level %d\n", DIV(hostGlobalLevel, NUM_SOURCES));
-			// printf("active blocks %d\n", hostActiveBlocks);
-
-			// int nSources = NUM_SOURCES;
-			// cudaMemcpyToSymbol(countTempReachByS, &nSources, sizeof(int));
+			cudaMemcpyFromSymbolAsync(&visited, devGlobalVisited, sizeof(int));
 
 			int hostCountTempReachByS = 1;
 			bool allZERO[NUM_SOURCES];
 			memset(allZERO, 0, sizeof(bool) * NUM_SOURCES);
 			cudaMemcpyToSymbol(checkedSources, allZERO, sizeof(bool) * NUM_SOURCES);
 
-			// sync device
 			cudaDeviceSynchronize();
 			
+			// Adjacency matrix
 			TM.start();
-
 			while (hostCountTempReachByS)
 			{
 				cudaMemcpyToSymbol(countTempReachByS, &ZERO, sizeof(int));
-
+				
 				AdjAnalysis<<<NUM_SOURCES, 32>>>(devAdjMatrix);
 				cudaDeviceSynchronize();
 				
 				cudaMemcpyFromSymbol(&hostCountTempReachByS, countTempReachByS, sizeof(int));
 			}
-			
 			TM.stop();
 
-			// sync device
 			cudaDeviceSynchronize();
 
-			float adjTime = TM.duration();
+			double adjTime = TM.duration();
 
-			cudaMemcpyFromSymbolAsync(&hostFoundCommon, found_common, sizeof(bool));
-			// printf("time of top-down adj matrix analysis %f\n", adjTime);
-			adjcheckTime += adjTime;
-			float partialTime = adjTime + bfsTime;
-			totalSingleTestTime += partialTime;
-			if (totalSingleTestTime < timeMin)
-				timeMin = totalSingleTestTime;
-			if (totalSingleTestTime > timeMax)
-				timeMax = totalSingleTestTime;
-			totalBfs += bfsTime;
-			totalTopDown += partialTime;
-			// printf("partial time top-down %f\n", partialTime);
-			// printf("partial visitedNodes %d\n", visitedNodes);
+			std::cout << "Time of adjacency matrix analysis: " << std::fixed << std::setprecision(2) << adjTime << " ms\n";
 
-			if (hostFoundCommon)
-			{
-				// printf("FOUND CONNECTION S-T\n");
-				found++;
+			totalAdjMatrixTime += adjTime;
+			totalBFSTime += BFSTime;
+			float stepTime = adjTime + BFSTime;
+			singleTestTime += stepTime;
+			std::cout << "Step time: " << std::fixed << std::setprecision(2) << stepTime << " ms\n";
+
+			cudaMemcpyFromSymbol(&foundCommon, devFoundCommon, sizeof(bool));
+			if (foundCommon) {
+				std::cout << "Found ST-Connection\n";
+				stConnectionsFound++;
 			}
-
-			doublePartialTime = partialTime;
-			totalTime += partialTime;
-
-			avgRun += 1;
-
-			run++;
 		}
 
-		// if (N_OF_TESTS > 0) //stampo stats
-		// {
-		// 	std::cout << "iter: " << std::left << std::setw(10) << i + 1 << "time: " << std::setw(10) << totalSingleTestTime << "Edges: "
-		// 			  << std::setw(10) << graph.visitedEdges() << "Source: " << source[0] << " Target " << source[NUM_SOURCES - 1] << std::endl;
-		// 	//std::cout << ss.str() << std::endl;
-		// 	std::cout << "-----------------------------------------------------------------------------" << std::endl;
-		// }
+		if (nof_tests > 1)
+			std::cout 	<< "iter: " << std::left << std::setw(10) << i << "time: " << std::setw(10) << singleTestTime << "source: " << sources[0] << std::setw(10) << " target: " << sources[NUM_SOURCES - 1]
+			<< std::endl << "---------------------------------------------------------------------\n";
+		else
+			cudaUtil::Compare(hostDistance, colors, V, "Distance Check", 1);
+
+		totalSteps += steps;
+		totalTime += singleTestTime;
+		singleTestTime = 0;
 	}
 
-	std::cout << std::setprecision(2) << std::fixed << std::endl //stats di percorrenza BFS
-			  << "\t    Number of TESTS:  " << N_OF_TESTS << std::endl
-			  << "\t    Number of SOURCE:  " << NUM_SOURCES << std::endl
-			  << "\t    Percentage of visited EDGES:  " << DEEPNESS << std::endl
-			  << "\t          Avg. Time:  " << totalTime / N_OF_TESTS << " ms" << std::endl
-			  << "\t          Avg. TopDownTime:  " << totalTopDown / topdown << " ms" << std::endl
-			  << "\t          Avg. BFSTime:  " << totalBfs / topdown << " ms" << std::endl
-			  << "\t          Avg. adjcheckTime:  " << adjcheckTime / topdown << " ms" << std::endl
-			  << "\t          Time MIN:  " << timeMin << " ms" << std::endl
-			  << "\t          Time MAX:  " << timeMax << " ms" << std::endl
-			  << "\t          Avg. Run:  " << avgRun / N_OF_TESTS << std::endl
-			  << "\t          Number of positive ST:  " << found << std::endl
-			  << std::endl;
+	std::cout	<< std::setprecision(2) << std::fixed << std::endl
+				<< "\t             Number of TESTS: " << nof_tests << std::endl
+				<< "\t           Number of SOURCES: " << NUM_SOURCES << std::endl
+				<< "\t Percentage of visited EDGES: " << DEEPNESS << std::endl
+				<< "\t        ST-Connections found: " << stConnectionsFound << std::endl
+				<< "\t                   Avg. Time: " << totalTime / nof_tests << " ms" << std::endl
+			    << "\t                Avg. BFSTime: " << totalBFSTime / nof_tests << " ms" << std::endl
+			    << "\t          Avg. AdjMatrixTime: " << totalAdjMatrixTime / nof_tests << " ms" << std::endl
+			    << "\t                    Avg. Run: " << totalSteps / (float)nof_tests << std::endl;
 
-	if (COUNT_DUP && N_OF_TESTS == 1)
-	{
+	if (COUNT_DUP && nof_tests == 1) {
 		int duplicates;
 		cudaMemcpyFromSymbol(&duplicates, duplicateCounter, sizeof(int));
-		std::cout << "\t     Duplicates:  " << duplicates << std::endl
-				  << std::endl;
+		std::cout	<< "\t     Duplicates:  " << duplicates << std::endl << std::endl;
 	}
 }
 
-void cudaGraph::BFSBlock()
-{
-	BFS_BlockKernel<DUPLICATE_REMOVE><<<NUM_SOURCES, BLOCKDIM>>>(devOutNodes, devOutEdges, devDistance, devF1, devF2, V, E, devAdjMatrix, run);
+void cudaGraph::cudaFASTCON() {
+	BFS_BlockKernel<DUPLICATE_REMOVE><<<NUM_SOURCES, BLOCKDIM>>>(devOutNodes, devOutEdges, colors, devF1, devF2, V, E, devAdjMatrix, steps);
 }
 
-void cudaGraph::Reset(int Sources[], int nof_sources)
-{
-	//level reset
+void cudaGraph::Reset(const int Sources[], int nof_sources) {
 	level = 1;
-
-	//frontier size reset
 	FrontierSize = nof_sources;
 
-	//visited nodes reset
-	visitedNodes = 0;
-
-	//reset frontier e matrice adiacenza
 	cudaMemset(devF1, 0, allocFrontierSize * sizeof(int));
 	cudaMemset(devF2, 0, allocFrontierSize * sizeof(int));
 	cudaMemset(devAdjMatrix, 0, NUM_SOURCES * NUM_SOURCES * sizeof(bool));
 
-	//inserimento frontier nel device
 	cudaMemcpy(devF1, Sources, nof_sources * sizeof(int), cudaMemcpyHostToDevice);
 
-	//azzeramento found common and counters
-	const int ZERO = 0;
-	bool hostFoundCommon = 0;
-	cudaMemcpyToSymbol(found_common, &hostFoundCommon, sizeof(bool));
+	const bool ZERO = 0;
+	cudaMemcpyToSymbol(devFoundCommon, &ZERO, sizeof(bool));
 	cudaMemcpyToSymbol(devGlobalVisited, &ZERO, sizeof(int));
-	cudaMemcpyToSymbol(devGlobalLevel, &ZERO, sizeof(int));
-	cudaMemcpyToSymbol(devActiveBlocks, &ZERO, sizeof(int));
-	cudaMemcpyToSymbol(countFail, &ZERO, sizeof(int));
 
-	cudaUtil::fillKernel<dist_t><<<DIV(V, 128), 128>>>(devDistance, V, INF);
-	cudaUtil::scatterKernel<dist_t><<<NUM_BLOCKS, BLOCKDIM>>>(devF1, NUM_SOURCES, devDistance, 0); //cudaUtil.cuh
+	// Set no-color for every node
+	cudaUtil::fillKernel<dist_t><<<DIV(V, 128), 128>>>(colors, V, -1);
+	// Color the sources
+	// cudaUtil::scatterKernel<dist_t><<<DIV(nof_sources, 128), 128>>>(devF1, nof_sources, colors);
+	cudaUtil::scatterKernel<dist_t><<<NUM_BLOCKS, BLOCKDIM>>>(devF1, nof_sources, colors);
 
-	//SizeArray[4] = {0, 0, 0, 0};
-	memset(SizeArray, 0, sizeof(SizeArray));
+	int SizeArray[4] = {0, 0, 0, 0};
 	cudaMemcpyToSymbol(devF2Size, SizeArray, sizeof(int) * 4);
 
 	GReset<<<1, 256>>>();
 	cudaError("Graph Reset");
 }
 
+
 // ---------------------- AUXILARY FUNCTION ---------------------------------------------
 
-inline void cudaGraph::FrontierDebug(int FrontierSize, int level, bool PRINT_F)
-{
+inline void cudaGraph::FrontierDebug(int FrontierSize, int level, bool PRINT_F) {
 	totalFrontierNodes += FrontierSize;
-
 	if (PRINT_F == 0)
 		return;
 	std::stringstream ss;
-	if (level < 2)
-	{
-		ss.str("");
-		ss << "Level: " << level << "\tF1Size: " << FrontierSize << std::endl;
-		printExt::printCudaArray(devF1, FrontierSize, ss.str());
-	}
-
-	ss.str("");
 	ss << "Level: " << level << "\tF2Size: " << FrontierSize << std::endl;
-	printExt::printCudaArray(devF2, FrontierSize, ss.str());
+	if (PRINT_F == 2)
+		printExt::printCudaArray(devF1, FrontierSize, ss.str());
 }
 
-template <int MIN_VALUE, int MAX_VALUE>
-inline int cudaGraph::logValueHost(int Value)
-{
-	int logSize = 31 - __builtin_clz(MAX_CONCURR_TH / Value); //conta numero di leading zero da sinistra
+template<int MIN_VALUE, int MAX_VALUE>
+inline int cudaGraph::logValueHost(int Value) {
+	int logSize = 31 - __builtin_clz(MAX_CONCURR_TH / Value);
 	if (logSize < _Log2<MIN_VALUE>::VALUE)
-	{
 		logSize = _Log2<MIN_VALUE>::VALUE;
-	}
 	if (logSize > _Log2<MAX_VALUE>::VALUE)
-	{
 		logSize = _Log2<MAX_VALUE>::VALUE;
-	}
 	return logSize;
 }
+
+		/*if (BLOCK_BFS && FrontierSize < BLOCK_FRONTIER_LIMIT) {
+			BFS_BlockKernel<DUPLICATE_REMOVE><<<1, 1024, 49152>>>(devNodes, devEdges, colors, devF1, devF2, FrontierSize);
+			cudaMemcpyFromSymbolAsync(&level, devLevel, sizeof(int));
+		} else {*/
