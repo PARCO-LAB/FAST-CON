@@ -38,7 +38,7 @@ void cudaGraph::cudaFASTCON_N(int nof_tests) {
 		float time = TM.duration();
 		totalTime += time;
 
-		int foundCommon = 1;
+		int foundCommon = 0;
 		cudaMemcpyFromSymbol(&foundCommon, devFoundCommon, sizeof(int));
 		if (foundCommon) {
 			std::cout << "Found ST-Connection\n";
